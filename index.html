@@ -3,32 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>TPS Locator — Infrabel Train Protection System</title>
+  <title>TPS Locator</title>
   
-  <!-- Mobiele PWA instellingen voor iOS en Android -->
-  <meta name="theme-color" content="#121820">
+  <!-- PWA & Mobile Meta Tags -->
+  <meta name="theme-color" content="#0a0e17">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TPS Locator">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   
   <style>
     :root {
-      --bg-main: #121820;
-      --bg-panel: #1a2330;
-      --bg-card: #222e3f;
-      --text-main: #f0f4f8;
+      --bg-dark: #0a0e17;
+      --bg-panel: #111726;
+      --bg-card: #182235;
+      --bg-card-hover: #1f2c44;
+      --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --border: #334155;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(0, 210, 255, 0.4);
       
-      /* TPS Kleuren volgens ETCS standaarden */
+      /* TPS Kleuren */
       --color-l2: #00d2ff;
       --color-l1-fs: #3b82f6;
       --color-l1-ls: #f59e0b;
       --color-tbl1: #10b981;
-      --color-tvm: #a855f7;
+      --color-tvm: #c084fc;
       --color-none: #ef4444;
     }
 
@@ -37,23 +41,29 @@
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
-      background-color: var(--bg-main);
+      background-color: var(--bg-dark);
       color: var(--text-main);
-      min-height: 100vh;
+      height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
+    /* HEADER */
     header {
-      background-color: var(--bg-panel);
-      padding: 14px 24px;
-      border-bottom: 2px solid var(--border);
+      background: rgba(17, 23, 38, 0.95);
+      backdrop-filter: blur(12px);
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      z-index: 1000;
+      flex-shrink: 0;
     }
 
     .brand {
@@ -62,426 +72,483 @@
       gap: 12px;
     }
 
-    .badge-infrabel {
-      background: #e11d48;
-      color: white;
+    .train-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+    }
+
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title h1 {
+      font-size: 16px;
       font-weight: 700;
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 4px;
-      letter-spacing: 0.5px;
-    }
-
-    h1 {
-      font-size: 18px;
-      font-weight: 600;
       letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .badge-standalone {
-      background: #0f766e;
-      color: #ccfbf1;
+    .brand-title span {
       font-size: 11px;
-      font-weight: 600;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
       padding: 4px 10px;
       border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #34d399;
     }
 
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* MAIN CONTAINER */
     main {
       flex: 1;
       display: grid;
-      grid-template-columns: 440px 1fr;
-      height: calc(100vh - 60px);
+      grid-template-columns: 410px 1fr;
+      height: calc(100vh - 58px);
+      overflow: hidden;
     }
 
-    @media (max-width: 950px) {
-      main {
-        grid-template-columns: 1fr;
-        height: auto;
-      }
-    }
-
-    /* Zijpaneel */
-    .control-panel {
-      background-color: var(--bg-panel);
+    /* ZIJPANEEL */
+    .panel {
+      background: var(--bg-panel);
       border-right: 1px solid var(--border);
-      padding: 20px;
+      padding: 18px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
     }
 
-    .dmi-display {
-      background: #090d12;
-      border: 2px solid var(--border);
-      border-radius: 10px;
-      padding: 20px;
+    /* DMI HERO DISPLAY */
+    .dmi-box {
+      background: linear-gradient(160deg, #0e1626, #070b13);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 18px;
       text-align: center;
-      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s ease;
     }
 
-    .dmi-label {
+    .dmi-box::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--color-l2);
+      box-shadow: 0 0 12px var(--color-l2);
+      transition: background 0.3s;
+    }
+
+    .dmi-tag {
       font-size: 11px;
       font-weight: 700;
       color: var(--text-muted);
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
-    .dmi-value {
-      font-size: 32px;
-      font-weight: 800;
+    .dmi-tps {
+      font-size: 34px;
+      font-weight: 900;
       letter-spacing: 0.5px;
-      margin-bottom: 8px;
-      color: var(--text-muted);
+      margin-bottom: 6px;
+      color: #94a3b8;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
       transition: color 0.3s ease;
     }
 
-    .dmi-sub {
-      font-size: 14px;
+    .dmi-desc {
+      font-size: 13px;
       color: var(--text-muted);
+      line-height: 1.4;
+      font-weight: 400;
     }
 
+    /* GPS BUTTON */
     .btn-gps {
-      background: #2563eb;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
       color: white;
       border: none;
-      padding: 14px;
-      border-radius: 8px;
+      padding: 15px;
+      border-radius: 12px;
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
       width: 100%;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-      transition: background 0.2s;
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+      transition: transform 0.1s, box-shadow 0.2s, background 0.2s;
     }
 
     .btn-gps:hover {
-      background: #1d4ed8;
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
     }
 
     .btn-gps:active {
-      transform: scale(0.99);
+      transform: scale(0.98);
     }
 
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px;
-    }
-
-    .card-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .coord-inputs {
+    /* INFO STATS GRID */
+    .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
-      margin-bottom: 10px;
     }
 
-    .input-group label {
-      display: block;
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-    }
-
-    .input-group input {
-      width: 100%;
-      background: #0f172a;
+    .stat-card {
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      color: white;
-      padding: 8px 10px;
-      border-radius: 6px;
-      font-size: 13px;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    .btn-secondary {
-      background: #334155;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 6px;
+    .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .card-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .coord-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-box {
+      background: #0d1422;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 9px 12px;
+      border-radius: 8px;
       font-size: 13px;
-      cursor: pointer;
       width: 100%;
-      font-weight: 500;
     }
 
-    .btn-secondary:hover {
-      background: #475569;
+    .input-box:focus {
+      outline: none;
+      border-color: var(--border-focus);
     }
 
-    /* Benchmarks */
-    .benchmark-chips {
+    .btn-search {
+      background: #27354a;
+      color: #fff;
+      border: none;
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-search:hover {
+      background: #334460;
+    }
+
+    /* BENCHMARK PRESETS */
+    .chips-list {
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
 
-    .chip {
-      background: #1e293b;
-      border: 1px solid #334155;
-      padding: 8px 12px;
-      border-radius: 6px;
-      color: #cbd5e1;
+    .chip-item {
+      background: #111a2a;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 9px 12px;
+      border-radius: 8px;
       font-size: 12px;
+      color: #e2e8f0;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: background 0.15s, border-color 0.15s;
+      transition: all 0.2s;
     }
 
-    .chip:hover {
-      background: #334155;
-      border-color: #64748b;
+    .chip-item:hover {
+      background: #1b263b;
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateX(2px);
     }
 
-    .chip-tag {
+    .tps-badge {
       font-size: 10px;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
+      font-weight: 800;
+      padding: 3px 7px;
+      border-radius: 6px;
+      letter-spacing: 0.3px;
     }
 
-    .tag-l2 { background: rgba(0, 210, 255, 0.15); color: var(--color-l2); }
-    .tag-l1 { background: rgba(59, 130, 246, 0.15); color: var(--color-l1-fs); }
-    .tag-ls { background: rgba(245, 158, 11, 0.15); color: var(--color-l1-ls); }
-    .tag-tbl { background: rgba(16, 185, 129, 0.15); color: var(--color-tbl1); }
+    .badge-l2 { background: rgba(0, 210, 255, 0.15); color: var(--color-l2); border: 1px solid rgba(0, 210, 255, 0.3); }
+    .badge-l1-fs { background: rgba(59, 130, 246, 0.15); color: var(--color-l1-fs); border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-l1-ls { background: rgba(245, 158, 11, 0.15); color: var(--color-l1-ls); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-tbl1 { background: rgba(16, 185, 129, 0.15); color: var(--color-tbl1); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-hsl { background: rgba(192, 132, 252, 0.15); color: var(--color-tvm); border: 1px solid rgba(192, 132, 252, 0.3); }
 
-    /* Map */
-    #map-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-    }
-
+    /* MAP CONTAINER */
     #map {
       width: 100%;
       height: 100%;
-      background: #0f172a;
+      background: #0a0e17;
     }
 
-    .map-overlay {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border);
+    /* STATUS TOAST */
+    .toast {
+      font-size: 12px;
       padding: 10px 14px;
       border-radius: 8px;
-      font-size: 12px;
-      z-index: 1000;
-      max-width: 280px;
-    }
-
-    /* Details tabel */
-    .details-table {
-      width: 100%;
-      font-size: 12px;
-      border-collapse: collapse;
-      margin-top: 6px;
-    }
-
-    .details-table td {
-      padding: 5px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .details-table td:first-child {
-      color: var(--text-muted);
-      width: 40%;
-    }
-
-    .details-table td:last-child {
-      font-weight: 600;
-      text-align: right;
-    }
-
-    .status-msg {
-      font-size: 12px;
-      padding: 8px 12px;
-      border-radius: 6px;
-      margin-top: 6px;
       display: none;
+      font-weight: 500;
+      border: 1px solid transparent;
+    }
+
+    /* MOBIELE AANPASSINGEN */
+    @media (max-width: 900px) {
+      body {
+        overflow-y: auto;
+        height: auto;
+      }
+
+      main {
+        display: flex;
+        flex-direction: column-reverse;
+        height: auto;
+      }
+
+      #map {
+        height: 52vh;
+        min-height: 320px;
+      }
+
+      .panel {
+        border-right: none;
+        border-top: 1px solid var(--border);
+        overflow-y: visible;
+        padding: 16px;
+      }
     }
   </style>
 </head>
 <body>
 
+  <!-- HEADER -->
   <header>
     <div class="brand">
-      <span class="badge-infrabel">INFRABEL</span>
-      <h1>TPS Locator — Cabine Assistent</h1>
+      <div class="train-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="3" width="16" height="16" rx="2"></rect>
+          <path d="M4 11h16"></path>
+          <path d="M12 3v8"></path>
+          <path d="m8 19-2 3"></path>
+          <path d="m16 19 2 3"></path>
+          <circle cx="8" cy="15" r="1.5"></circle>
+          <circle cx="16" cy="15" r="1.5"></circle>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <h1>TPS Locator</h1>
+        <span>Infrabel Spoorwegbeveiliging</span>
+      </div>
     </div>
-    <span class="badge-standalone">⚡ Standalone Webapp (Zonder installatie)</span>
+    
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      <span>GPS Gereed</span>
+    </div>
   </header>
 
+  <!-- MAIN -->
   <main>
     <!-- ZIJPANEEL -->
-    <div class="control-panel">
+    <div class="panel">
       
-      <!-- DMI DISPLAY (CABINE INDICATIE) -->
-      <div class="dmi-display" id="dmiBox">
-        <div class="dmi-label">Actief Beveiligingssysteem (TPS)</div>
-        <div class="dmi-value" id="tpsValue">—</div>
-        <div class="dmi-sub" id="tpsDetails">Wacht op locatiebepaling...</div>
+      <!-- HERO CAB DMI DISPLAY -->
+      <div class="dmi-box" id="dmiBox">
+        <div class="dmi-tag">Actief Systeem</div>
+        <div class="dmi-tps" id="tpsValue">—</div>
+        <div class="dmi-desc" id="tpsDesc">Druk op GPS of tik op het spoor op de kaart</div>
       </div>
 
-      <!-- GPS KNOP -->
+      <!-- GROTE GPS KNOP -->
       <button class="btn-gps" id="btnGps" onclick="getLocation()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
         </svg>
         <span>📍 Bepaal Mijn GPS-Locatie</span>
       </button>
 
-      <div id="statusAlert" class="status-msg"></div>
+      <!-- STATUS TOAST -->
+      <div id="toastAlert" class="toast"></div>
 
-      <!-- DETAILS KAART -->
-      <div class="card">
-        <div class="card-title">Spoor & Baanvak Info</div>
-        <table class="details-table">
-          <tr>
-            <td>Spoorlijn:</td>
-            <td id="detLine">—</td>
-          </tr>
-          <tr>
-            <td>Spoor:</td>
-            <td id="detTrack">—</td>
-          </tr>
-          <tr>
-            <td>Bron:</td>
-            <td id="detSource">Infrabel Open Data API</td>
-          </tr>
-          <tr>
-            <td>Coördinaten:</td>
-            <td id="detCoords">—</td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- HANDMATIG COÖRDINATEN INVOEREN -->
-      <div class="card">
-        <div class="card-title">Handmatige Invoer</div>
-        <div class="coord-inputs">
-          <div class="input-group">
-            <label>Breedtegraad (Lat)</label>
-            <input type="number" id="inputLat" step="0.000001" placeholder="50.836928" value="50.836928">
-          </div>
-          <div class="input-group">
-            <label>Lengtegraad (Lon)</label>
-            <input type="number" id="inputLon" step="0.000001" placeholder="4.828328" value="4.828328">
-          </div>
+      <!-- INFO GRID -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Spoorlijn</span>
+          <span class="stat-val" id="valLine">—</span>
         </div>
-        <button class="btn-secondary" onclick="manualLookup()">🔍 Zoek op coördinaten</button>
+        <div class="stat-card">
+          <span class="stat-label">Spoor</span>
+          <span class="stat-val" id="valTrack">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Afstand As</span>
+          <span class="stat-val" id="valDist">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Coördinaten</span>
+          <span class="stat-val" id="valCoords" style="font-size:12px; font-weight:600;">—</span>
+        </div>
       </div>
 
       <!-- SNELKEUZE BENCHMARKS -->
       <div class="card">
-        <div class="card-title">Belgische Testlocaties</div>
-        <div class="benchmark-chips">
-          <div class="chip" onclick="setBenchmark(50.836928, 4.828328, 'L.36 Kumtich (Tienen)')">
-            <span>Lijn 36 (Kumtich/Tienen)</span>
-            <span class="chip-tag tag-l2">ETCS L2 FS</span>
+        <div class="card-header">
+          <span>Testlocaties België</span>
+        </div>
+        <div class="chips-list">
+          <div class="chip-item" onclick="setBenchmark(50.836928, 4.828328, 'L.36 Kumtich (Tienen)')">
+            <span>Lijn 36 • Kumtich (Tienen)</span>
+            <span class="tps-badge badge-l2">ETCS L2 FS</span>
           </div>
-          <div class="chip" onclick="setBenchmark(51.175783, 4.473576, 'L.15 Boechout (Lier)')">
-            <span>Lijn 15 (Boechout/Lier)</span>
-            <span class="chip-tag tag-l1">ETCS L1 FS</span>
+          <div class="chip-item" onclick="setBenchmark(51.175783, 4.473576, 'L.15 Boechout (Lier)')">
+            <span>Lijn 15 • Boechout (Lier)</span>
+            <span class="tps-badge badge-l1-fs">ETCS L1 FS</span>
           </div>
-          <div class="chip" onclick="setBenchmark(51.211396, 5.324270, 'L.19 Lommel')">
-            <span>Lijn 19 (Lommel)</span>
-            <span class="chip-tag tag-ls">ETCS L1 LS</span>
+          <div class="chip-item" onclick="setBenchmark(51.211396, 5.324270, 'L.19 Lommel Kempen')">
+            <span>Lijn 19 • Lommel</span>
+            <span class="tps-badge badge-l1-ls">ETCS L1 LS</span>
           </div>
-          <div class="chip" onclick="setBenchmark(50.995000, 5.456658, 'L.18 Houthalen')">
-            <span>Lijn 18 (Houthalen)</span>
-            <span class="chip-tag tag-tbl">TBL1+</span>
+          <div class="chip-item" onclick="setBenchmark(50.995000, 5.456658, 'L.18 Houthalen')">
+            <span>Lijn 18 • Houthalen</span>
+            <span class="tps-badge badge-tbl1">TBL1+</span>
           </div>
-          <div class="chip" onclick="setBenchmark(51.357004, 4.633011, 'L.4 HSL 4 Brecht')">
-            <span>Lijn 4 (HSL 4 Brecht)</span>
-            <span class="chip-tag" style="background: rgba(168,85,247,0.2); color:#c084fc;">ETCS 1+2</span>
+          <div class="chip-item" onclick="setBenchmark(51.357004, 4.633011, 'L.4 HSL 4 Brecht')">
+            <span>Lijn 4 • HSL 4 Brecht</span>
+            <span class="tps-badge badge-hsl">ETCS 1+2</span>
           </div>
+        </div>
+      </div>
+
+      <!-- HANDMATIG ZOEKEN -->
+      <div class="card">
+        <div class="card-header">
+          <span>Coördinaten Invoeren</span>
+        </div>
+        <div class="coord-row">
+          <input type="number" id="inputLat" class="input-box" step="0.000001" placeholder="Lat (bv 50.8369)" value="50.836928">
+          <input type="number" id="inputLon" class="input-box" step="0.000001" placeholder="Lon (bv 4.8283)" value="4.828328">
+          <button class="btn-search" onclick="manualLookup()">Zoek</button>
         </div>
       </div>
 
     </div>
 
-    <!-- KAART CONTAINER -->
-    <div id="map-container">
-      <div id="map"></div>
-      <div class="map-overlay">
-        <strong>💡 Kaart & Sporen:</strong><br>
-        • ESRI Basiskaart (100% vrij & stabiel)<br>
-        • Officiële Infrabel Spoorvectoren<br>
-        <span style="font-size:11px; color:#94a3b8;">Rechtsonder kies je tussen Donker, Straten, Satelliet of Topo.</span>
-      </div>
-    </div>
+    <!-- KAART -->
+    <div id="map"></div>
   </main>
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // Initialiseer Leaflet kaart gecentreerd op België
+    // Initialiseer Leaflet kaart
     const map = L.map('map', {
-      zoomControl: true
+      zoomControl: true,
+      attributionControl: false
     }).setView([50.8503, 4.3517], 9);
 
-    // 100% Vrije ESRI basemaps (GEEN API key nodig, GEEN 403 blokkades)
+    // 100% Vrije en stabiele ESRI Basiskaarten
     const esriDark = L.layerGroup([
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 16,
-        attribution: '© ESRI, HERE, Garmin'
-      }),
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 16
-      })
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }),
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 })
     ]);
 
-    const esriStreet = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 18,
-      attribution: '© ESRI'
-    });
+    const esriStreets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
 
-    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 18,
-      attribution: '© ESRI World Imagery'
-    });
-
-    const esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 18,
-      attribution: '© ESRI'
-    });
-
-    // Standaard ESRI Dark activeren (perfect voor cabine DMI)
     esriDark.addTo(map);
 
-    // Kaartlagen-schakelaar toevoegen
-    const baseMaps = {
-      "🌙 Donkere Cabinekaart (ESRI)": esriDark,
-      "🗺️ Stratenkaart (ESRI Streets)": esriStreet,
-      "🛰️ Satelliet (ESRI Imagery)": esriSatellite,
-      "⛰️ Topografisch (ESRI Topo)": esriTopo
-    };
-    L.control.layers(baseMaps, null, { position: 'bottomright' }).addTo(map);
+    // Kaartkiezer rechtsonder
+    L.control.layers({
+      "🌙 Donker (DMI)": esriDark,
+      "🗺️ Stratenkaart": esriStreets,
+      "🛰️ Satelliet": esriSatellite
+    }, null, { position: 'bottomright' }).addTo(map);
 
     let currentMarker = null;
     let radiusCircle = null;
@@ -503,21 +570,18 @@
     function manualLookup() {
       const lat = parseFloat(document.getElementById('inputLat').value);
       const lon = parseFloat(document.getElementById('inputLon').value);
-      if (isNaN(lat) || isNaN(lon)) {
-        alert("Ongeldige coördinaten ingevoerd.");
-        return;
-      }
+      if (isNaN(lat) || isNaN(lon)) return;
       lookupTPS(lat, lon);
     }
 
-    // HTML5 GPS Locatie van de machinist
+    // HTML5 GPS van het toestel
     function getLocation() {
       const btn = document.getElementById('btnGps');
-      btn.innerText = "⏳ Bezig met bepalen GPS...";
+      btn.innerText = "⏳ GPS Zoeken...";
       btn.disabled = true;
 
       if (!navigator.geolocation) {
-        showStatus("Geolocatie wordt niet ondersteund door deze browser.", "#ef4444");
+        showToast("Geolocatie wordt niet ondersteund door deze browser.", "#ef4444");
         btn.innerHTML = "<span>📍 Bepaal Mijn GPS-Locatie</span>";
         btn.disabled = false;
         return;
@@ -527,14 +591,15 @@
         (position) => {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
+          const acc = Math.round(position.coords.accuracy);
           document.getElementById('inputLat').value = lat.toFixed(6);
           document.getElementById('inputLon').value = lon.toFixed(6);
-          lookupTPS(lat, lon, "Mijn huidige locatie");
+          lookupTPS(lat, lon, `Mijn Positie (±${acc}m)`);
           btn.innerHTML = "<span>📍 Bepaal Mijn GPS-Locatie</span>";
           btn.disabled = false;
         },
         (error) => {
-          showStatus("GPS fout: " + error.message, "#ef4444");
+          showToast("GPS fout: " + error.message, "#ef4444");
           btn.innerHTML = "<span>📍 Bepaal Mijn GPS-Locatie</span>";
           btn.disabled = false;
         },
@@ -542,64 +607,55 @@
       );
     }
 
-    // Hoofdfunctie: bevragen van Infrabel Open Data API
+    // Live Infrabel query
     async function lookupTPS(lat, lon, label = null) {
       updateMapMarker(lat, lon, label);
-      showStatus("Infrabel Open Data API bevragen...", "#3b82f6");
+      showToast("Spoorwegdata opvragen...", "#38bdf8");
 
       const tpsVal = document.getElementById('tpsValue');
-      const tpsDet = document.getElementById('tpsDetails');
-      tpsVal.innerText = "LADEN...";
+      const tpsDesc = document.getElementById('tpsDesc');
+      tpsVal.innerText = "...";
       tpsVal.style.color = "#94a3b8";
 
-      document.getElementById('detCoords').innerText = `${lat.toFixed(5)}°, ${lon.toFixed(5)}°`;
+      document.getElementById('valCoords').innerText = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
 
       try {
-        // Query Infrabel Open Data API rechtstreeks via ODSQL within_distance!
-        const searchRadiusMeters = 150; // Zoek binnen 150m van het spoor
-        const apiUrl = `https://opendata.infrabel.be/api/explore/v2.1/catalog/datasets/geo-etcs/records?where=within_distance(geom,%20geom'POINT(${lon}%20${lat})',%20${searchRadiusMeters}m)&limit=5`;
+        const searchRadiusMeters = 150;
+        const apiUrl = `https://opendata.infrabel.be/api/explore/v2.1/catalog/datasets/geo-etcs/records?where=within_distance(geom,%20geom'POINT(${lon}%20${lat})',%20${searchRadiusMeters}m)&limit=3`;
 
         const resp = await fetch(apiUrl);
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status + " van Infrabel API");
-        }
+        if (!resp.ok) throw new Error("Status " + resp.status);
 
         const data = await resp.json();
 
         if (data.results && data.results.length > 0) {
-          // Gevonden in geo-etcs!
           const match = data.results[0];
           const etcsLevel = match.etcs_level || "ETCS";
-          const line = match.line_name_input || "Onbekend";
+          const line = match.line_name_input || "—";
           const track = match.track_code || "1";
 
-          // Teken het Infrabel spoorsegment direct als vectorlijn op de kaart!
+          // Teken het spoor
           if (trackLayer) map.removeLayer(trackLayer);
           if (match.geom) {
             trackLayer = L.geoJSON(match.geom, {
-              style: {
-                color: getTpsColor(etcsLevel),
-                weight: 6,
-                opacity: 0.95
-              }
+              style: { color: getTpsColor(etcsLevel), weight: 6, opacity: 0.95 }
             }).addTo(map);
           }
 
-          renderResult(etcsLevel, line, track, "Infrabel geo-etcs (Actief)");
-          showStatus(`Gevonden op Lijn ${line}, Spoor ${track} [${etcsLevel}]`, "#10b981");
+          renderResult(etcsLevel, line, track, "< 15 m");
+          showToast(`Gevonden: Lijn ${line}, Spoor ${track}`, "#10b981");
         } else {
-          // Geen ETCS in geo-etcs. Controleer of het op het spoornetwerk ligt via geosporen (TBL1+ fallback)
           checkConventionalFallback(lat, lon);
         }
       } catch (err) {
         console.error(err);
-        showStatus("Fout bij ophalen Infrabel data: " + err.message, "#ef4444");
+        showToast("Infrabel API fout: " + err.message, "#ef4444");
         tpsVal.innerText = "FOUT";
-        tpsDet.innerText = err.message;
+        tpsDesc.innerText = err.message;
       }
     }
 
-    // Fallback controle voor TBL1+
+    // Fallback voor TBL1+
     async function checkConventionalFallback(lat, lon) {
       if (trackLayer) map.removeLayer(trackLayer);
       try {
@@ -614,26 +670,21 @@
 
             if (track.geo_shape) {
               trackLayer = L.geoJSON(track.geo_shape, {
-                style: {
-                  color: "#10b981",
-                  weight: 6,
-                  opacity: 0.95
-                }
+                style: { color: "#10b981", weight: 6, opacity: 0.95 }
               }).addTo(map);
             }
 
-            renderResult("TBL1+", line, trackNum, "Infrabel geosporen (Conventioneel spoor)");
-            showStatus(`Conventioneel spoor gevonden (Geen ETCS) -> TBL1+`, "#10b981");
+            renderResult("TBL1+", line, trackNum, "< 25 m");
+            showToast(`Conventioneel spoor (Geen ETCS) -> TBL1+`, "#10b981");
             return;
           }
         }
       } catch(e) {
-        console.warn("Geosporen fallback mislukt:", e);
+        console.warn(e);
       }
 
-      // Geen enkel spoor binnen bereik
-      renderResult("BUITEN BEREIK", "Geen spoor", "—", "Geen spoor binnen 150m");
-      showStatus("Geen spoorweg gevonden binnen 150 meter van deze locatie.", "#f59e0b");
+      renderResult("BUITEN BEREIK", "—", "—", "> 150 m");
+      showToast("Geen spoorweg binnen 150 meter.", "#f59e0b");
     }
 
     function getTpsColor(tps) {
@@ -641,37 +692,36 @@
       if (tps.includes("L1 FS")) return "#3b82f6";
       if (tps.includes("L1 LS")) return "#f59e0b";
       if (tps.includes("TBL1")) return "#10b981";
-      if (tps.includes("1+2") || tps.includes("TVM")) return "#a855f7";
+      if (tps.includes("1+2") || tps.includes("TVM")) return "#c084fc";
       return "#ef4444";
     }
 
-    function renderResult(tps, line, track, source) {
+    function renderResult(tps, line, track, dist) {
       const tpsVal = document.getElementById('tpsValue');
-      const tpsDet = document.getElementById('tpsDetails');
+      const tpsDesc = document.getElementById('tpsDesc');
+      const box = document.getElementById('dmiBox');
 
       tpsVal.innerText = tps;
-      document.getElementById('detLine').innerText = "Lijn " + line;
-      document.getElementById('detTrack').innerText = "Spoor " + track;
-      document.getElementById('detSource').innerText = source;
+      document.getElementById('valLine').innerText = line.startsWith('L') ? line : 'Lijn ' + line;
+      document.getElementById('valTrack').innerText = 'Spoor ' + track;
+      document.getElementById('valDist').innerText = dist;
+
+      const col = getTpsColor(tps);
+      tpsVal.style.color = col;
+      box.style.borderTop = `3px solid ${col}`;
 
       if (tps.includes("L2")) {
-        tpsVal.style.color = "var(--color-l2)";
-        tpsDet.innerText = "Cabinesignalering via GSM-R radio (Full Supervision)";
+        tpsDesc.innerText = "Cabinesignalering via GSM-R radio (Full Supervision)";
       } else if (tps.includes("L1 FS")) {
-        tpsVal.style.color = "var(--color-l1-fs)";
-        tpsDet.innerText = "Cabinesignalering via Eurobalises (Full Supervision)";
+        tpsDesc.innerText = "Cabinesignalering via Eurobalises (Full Supervision)";
       } else if (tps.includes("L1 LS")) {
-        tpsVal.style.color = "var(--color-l1-ls)";
-        tpsDet.innerText = "Beperkte bewaking (Limited Supervision) - volg optische seinen";
-      } else if (tps.includes("TBL1+")) {
-        tpsVal.style.color = "var(--color-tbl1)";
-        tpsDet.innerText = "Nationaal beveiligingssysteem TBL1+ (Optische seinen met noodstop/snelheidsbewaking)";
+        tpsDesc.innerText = "Beperkte bewaking (Limited Supervision) - volg optische seinen";
+      } else if (tps.includes("TBL1")) {
+        tpsDesc.innerText = "Nationaal beveiligingssysteem TBL1+ (Optische seinen met noodstop/snelheidsbewaking)";
       } else if (tps.includes("1+2") || tps.includes("TVM")) {
-        tpsVal.style.color = "var(--color-tvm)";
-        tpsDet.innerText = "Hogesnelheidslijn (Dual Mode ETCS 1+2 of TVM-430)";
+        tpsDesc.innerText = "Hogesnelheidslijn (Dual Mode ETCS 1+2 of TVM-430)";
       } else {
-        tpsVal.style.color = "var(--color-none)";
-        tpsDet.innerText = "Geen spoor gevonden binnen zoekradius.";
+        tpsDesc.innerText = "Geen spoorlijn gedetecteerd binnen zoekradius.";
       }
     }
 
@@ -679,30 +729,43 @@
       if (currentMarker) map.removeLayer(currentMarker);
       if (radiusCircle) map.removeLayer(radiusCircle);
 
-      currentMarker = L.marker([lat, lon]).addTo(map);
-      if (label) currentMarker.bindPopup(`<b>${label}</b><br>${lat.toFixed(5)}, ${lon.toFixed(5)}`).openPopup();
+      const customIcon = L.divIcon({
+        className: 'custom-pin',
+        html: `<div style="background:#0284c7; width:16px; height:16px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 10px rgba(2,132,199,0.8);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+
+      currentMarker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
+      if (label) currentMarker.bindPopup(`<b>${label}</b>`).openPopup();
 
       radiusCircle = L.circle([lat, lon], {
-        radius: 150,
-        color: '#3b82f6',
-        fillColor: '#3b82f6',
-        fillOpacity: 0.1,
+        radius: 100,
+        color: '#0284c7',
+        fillColor: '#0284c7',
+        fillOpacity: 0.08,
+        weight: 1,
         dashArray: '4, 4'
       }).addTo(map);
 
       map.setView([lat, lon], 15);
     }
 
-    function showStatus(msg, color) {
-      const el = document.getElementById('statusAlert');
+    function showToast(msg, color) {
+      const el = document.getElementById('toastAlert');
       el.style.display = 'block';
-      el.style.backgroundColor = color + '22';
+      el.style.backgroundColor = color + '1a';
       el.style.color = color;
-      el.style.border = `1px solid ${color}`;
+      el.style.borderColor = color + '44';
       el.innerText = msg;
     }
 
-    // Automatisch opstarten met BM-1 Lijn 36 Tienen
+    // Registreer Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(console.warn);
+    }
+
+    // Start met Lijn 36
     setBenchmark(50.836928, 4.828328, "L.36 Kumtich (Tienen)");
   </script>
 </body>
